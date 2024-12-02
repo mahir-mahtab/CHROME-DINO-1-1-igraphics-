@@ -1,4 +1,5 @@
 #include "iGraphics.h"
+// #include"fakeigraphics.h"
 #include <bits/stdc++.h>
 using namespace std;
 char ground[8][50] = {
@@ -27,6 +28,10 @@ char obstacleImages[4][50] = {
 	"./obstacles/tile002.bmp",
 	"./obstacles/tile003.bmp",
 };
+char cloudImg[2][50] = {
+	"./cloud/tile000.bmp",
+	"./cloud/tile001.bmp",
+};
 char birdImg[4][50] = {
 	"./bird/tile000.bmp",
 	"./bird/tile001.bmp",
@@ -44,6 +49,7 @@ int x = 300, y = 300, r = 0;
 int startGameflage = 0;
 float jumpflag = 0, jumpupflag = 0, jumpdownflag = 0, height = 120, speed = 1.55, a = .006;
 int dip = 0;
+int cloudy=400,cloudx=750;
 struct Obstacle
 {
 	float x, y;
@@ -100,6 +106,9 @@ void border()
 
 void groundPlot()
 {
+
+	iShowBMP2(cloudx, cloudy-100, cloudImg[1], 0);
+
 	for (int i = 0; i < 16; i++)
 	{
 		int xSpeed = groundInitial + groundBlock * i + offset;
@@ -113,6 +122,8 @@ void groundUpdate()
 	{
 		offset = 0;
 	}
+	cloudx=cloudx-30;
+	cloudx<0?cloudx=750:cloudx;
 }
 
 void iDraw()
@@ -213,11 +224,11 @@ void iSpecialKeyboard(unsigned char key)
 int main()
 {
 	// place your own initialization codes here.
+	PlaySound(TEXT("C:\\Users\\USER\\Desktop\\igrahics project\\music.wav"), NULL, SND_ASYNC | SND_LOOP);
 	iSetTimer(100, update);
 	iSetTimer(2000, standDino);
-	iSetTimer(17, iDraw);
-	iSetTimer(3000, createObstackles);
-	iSetTimer(5000, createBird);
+	iSetTimer(2000, createObstackles);
+	iSetTimer(10000, createBird);
 	iInitialize(800, 600, "demo");
 	return 0;
 }
@@ -225,7 +236,9 @@ void game()
 {
 	iSetColor(255, 255, 255);
 	iFilledRectangle(50, 50, 700, 500);
+	// iShowBMP2(50, 50, "./background.bmp/background.bmp",-1);
 	// d
+	iShowBMP2(500,400,"./sun/tile001.bmp",0);
 
 	groundPlot();
 	if (dip == 0)
@@ -237,10 +250,10 @@ void game()
 	obstacklePlot();
 	birdPlot();
 	checkGameOver();
-	displayScore();
 
 	// last line border
 	border();
+	displayScore();
 }
 void standDino()
 {
@@ -416,11 +429,8 @@ void restartGame(int x, int y)
 }
 void displayScore()
 {
-	iSetColor(255, 0, 255);											   // White color
-	iText(10, iScreenHeight - 20, "Score:", GLUT_BITMAP_HELVETICA_18); // Label
-	string scoreText;
-	scoreText = to_string(score);
-    char scorearr[scoreText.length() + 1];
-	strcpy(scorearr, scoreText.c_str());
-	iText(70, iScreenHeight - 20, scorearr, GLUT_BITMAP_HELVETICA_18);
+	// White color
+	char scoreText[20];
+	sprintf(scoreText, "score: %d", score);
+	iText(70, iScreenHeight - 100 , scoreText, GLUT_BITMAP_HELVETICA_18);
 }
