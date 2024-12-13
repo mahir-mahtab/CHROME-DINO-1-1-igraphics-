@@ -424,7 +424,7 @@ void restartGame(int x, int y)
 {
 	if (x > 200 && x < 600 && y > 200 && y < 370)
 	{
-		startGameflage = 1, jumpdownflag = 0, jumpupflag = 0, jumpflag = 0, dip = 0, obstacles.clear(), birds.clear(), r = 0, birdCount = 0, dinoX = 200, dinoY = 105, fps = 0, speed = 1.55, a = .006;
+		startGameflage = 1, jumpdownflag = 0, jumpupflag = 0, jumpflag = 0, dip = 0, obstacles.clear(), birds.clear(), r = 0, birdCount = 0, dinoX = 200, dinoY = 105, fps = 0, speed = 1.55, a = .006,score = 0;
 	}
 }
 void displayScore()
@@ -432,5 +432,6 @@ void displayScore()
 	// White color
 	char scoreText[20];
 	sprintf(scoreText, "score: %d", score);
+	iSetColor(0,0,0);
 	iText(70, iScreenHeight - 100 , scoreText, GLUT_BITMAP_HELVETICA_18);
 }
