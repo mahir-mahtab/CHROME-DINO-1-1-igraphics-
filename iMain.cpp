@@ -42,18 +42,21 @@ char coin[20] = "./coin/coin.bmp";
 int count = 0;
 int birdCount = 0;
 int score = 0;
-int highScore = 0;
-int groundInitial = 80, groundBlock = 80, groundSpeed = 25, offset = 0, fps = 0;
+int obstackleTime=1400;
+
+int groundInitial = 80, groundBlock = 80, groundSpeed, offset = 0, fps = 0;
 float dinoX = 200, dinoY = 105, dinoSpeed = 10;
-int life = 3, lifecordinatex = 700, lifecordinatey = 480, spacingLife = 30;
-bool musicon=false;
+int life, lifecordinatex = 700, lifecordinatey = 480, spacingLife = 30;
+bool musicon = false , scoreSaved = false;
+
 
 int x = 300, y = 300, r = 0;
-int startGameflage = 0; // 0=menu,1=game,2=game over,3=name enter;
-float jumpflag = 0, jumpupflag = 0, jumpdownflag = 0, height = 120, speed = 1.55, a = .006;
+int startGameflage = 0; // 0=menu,1=game,2=game over,3=name enter,4=leaderboard,5=level selection;
+float jumpflag = 0, jumpupflag = 0, jumpdownflag = 0, height, speed = 1.55, a = .006;
 int dip = 0;
-int cloudy = 400, cloudx = 750;
+int cloudy = 400, cloudx = 750, nameIndex = 0;
 char gameSound[25] = "./sound/gamesound.wav";
+char name[20] = "";
 struct Obstacle
 {
 	float x, y;
@@ -69,10 +72,18 @@ struct Coin
 	float x, y;
 	int index;
 };
+struct Player
+{
+	char n[20];
+	int scoreName;
+};
+vector<Player> Players(3);
 
 vector<Obstacle> obstacles;
 vector<Bird> birds;
 vector<Coin> coins;
+vector<pair<string, int>> leaderboard; // Vector to store the leaderboard data
+const char *leaderboardFile = "leaderboard.txt";
 void createBird();
 void updateBird();
 void birdPlot();
@@ -88,7 +99,17 @@ void updateCoin();
 void createCoin();
 void coinPlot();
 void lifePlot();
-
+void enterName();
+void saveLeaderboard();
+void loadLeaderboard();
+void updateLeaderboard(const char *name, int score);
+void displayLeaderboard();
+void displayLead();
+void levelselection();
+void easy();
+void medium();
+void hard();
+void checklevel(int x,int y);
 /*
 	function iDraw() is called again and again by the system.
 */
@@ -98,14 +119,22 @@ void update();
 void standDino();
 void dipDino();
 void updateStand();
+void info();
 void startGame(int x, int y)
 {
 	if (x > 275 && x < 520 && y > 110 && y < 220)
 	{
-		startGameflage = 1;	
-	 PlaySound(TEXT("sound//gamesound.wav"),NULL,SND_LOOP | SND_ASYNC);
+		startGameflage = 3;
+		
 	}
+	if (x > 600 && x < 780 && y > 45 && y < 100){
+			startGameflage=4;
 	}
+	if (x > 720 && x < 760 && y > 490 && y < 530){
+			startGameflage=6;
+	}
+
+}
 
 void border()
 {
@@ -152,12 +181,27 @@ void iDraw()
 	if (startGameflage == 0)
 	{
 		iShowBMP(0, 0, "./output.bmp");
+		iShowBMP2(719,489,"./icon/info.bmp",0);
 	}
 	else if (startGameflage == 1)
 	{
 		game();
 	}
+	else if (startGameflage == 3)
+	{
+		enterName();
+	}
+	if(startGameflage==5){
+		levelselection();
+	}
 	gameOver();
+	if (startGameflage == 4)
+	{
+		displayLead();
+	}
+	if(startGameflage==6){
+		info();
+	}
 
 	return;
 }
@@ -189,6 +233,10 @@ void iMouse(int button, int state, int mx, int my)
 		{
 			restartGame(mx, my);
 		}
+		if(startGameflage==5){
+			checklevel(mx,my);
+			
+		}
 		x += 10;
 		y += 10;
 	}
@@ -211,15 +259,45 @@ void iPassiveMouseMove(int mx, int my)
 	*/
 void iKeyboard(unsigned char key)
 {
-	if (key == 'q')
+	if (key == 's' && jumpflag == 0)
+	{
+		dip=1;
+	}
+	if (key == 'q' && startGameflage == 1)
 	{
 		exit(0);
 	}
 	// place your codes for other keys here
-	if (key == ' ')
+	if (key == ' ' && startGameflage == 1)
 	{
 		jumpflag = 1;
 	}
+	if (key != '\b' && key != '\r' && startGameflage == 3)
+	{
+		name[nameIndex] = key;
+		name[nameIndex + 1] = '\0';
+		nameIndex++;
+	}
+	if (key == '\r' && startGameflage == 3)
+	{
+		startGameflage = 5;
+	}
+	if (key == '\b' && startGameflage == 3)
+	{
+		nameIndex--;
+		name[nameIndex]='\0';
+	}
+	if (key = 'x' && startGameflage == 2)
+	{
+		startGameflage = 4;
+	}
+	if(key = 'b'&&startGameflage==6){
+		startGameflage=0;
+	}
+	if(key = 'b'&&startGameflage==4){
+		startGameflage=0;
+	}
+
 }
 
 /*
@@ -238,10 +316,7 @@ void iSpecialKeyboard(unsigned char key)
 	{
 		exit(0);
 	}
-	if (key == GLUT_KEY_PAGE_DOWN && jumpflag == 0)
-	{
-		dip = 1;
-	}
+	
 	// place your codes for other keys here
 }
 void game()
@@ -251,7 +326,7 @@ void game()
 	// iShowBMP2(50, 50, "./background.bmp/background.bmp",-1);
 	// d
 	iShowBMP2(500, 400, "./sun/tile001.bmp", 0);
-	musicon=true;
+	musicon = true;
 	groundPlot();
 	if (dip == 0)
 	{
@@ -279,11 +354,14 @@ void update()
 	r++;
 
 	// standDino();
-	groundUpdate();
-	updateObstackle();
-	updateBird();
-	updateCoin();
-	score += 1;
+	if (startGameflage == 1)
+	{
+		groundUpdate();
+		updateObstackle();
+		updateBird();
+		updateCoin();
+		score += 1;
+	}
 
 	// Update high score if current score exceeds it
 }
@@ -382,9 +460,12 @@ void checkGameOver()
 		{
 			life--;
 			obstacles.erase(obstacles.begin() + i);
-			if (life == 0){
+			if (life == 0)
+			{
 				startGameflage = 2;
-				PlaySound(0,0,0);
+				PlaySound(0, 0, 0);
+				
+				
 			}
 			printf("Game Over\n");
 		}
@@ -399,7 +480,7 @@ void checkGameOver()
 
 				if (life == 0)
 					startGameflage = 2;
-					musicon=false;
+				musicon = false;
 			}
 		}
 	for (int i = 0; i < coins.size(); i++)
@@ -413,11 +494,14 @@ void checkGameOver()
 }
 void createBird()
 {
-	Bird add;
-	add.x = 800;
-	add.y = birdCount % 2 == 0 ? 120 : 180;
-	add.index = rand() % 4;
-	birds.push_back(add);
+	if (startGameflage == 1)
+	{
+		Bird add;
+		add.x = 800;
+		add.y = birdCount % 2 == 0 ? 120 : 180;
+		add.index = rand() % 4;
+		birds.push_back(add);
+	}
 }
 void updateBird()
 {
@@ -429,7 +513,7 @@ void updateBird()
 			birds.erase(birds.begin() + i);
 			i--;
 		}
-		birds[i].x -= (groundSpeed + 20);
+		birds[i].x -= (groundSpeed + 30);
 	}
 	birdCount++;
 }
@@ -451,14 +535,29 @@ void gameOver()
 	{
 
 		iShowBMP2(0, 0, "./asset/gameover.bmp", -1);
+		if (!scoreSaved)
+		{ // Write the score only once
+			updateLeaderboard(name, score);
+			displayLeaderboard();
+			scoreSaved = true; // Prevent multiple writes
+		}
+		char scoreText[20];
+		sprintf(scoreText, "%d", score);
+		ishowmanualtext(500, 178, scoreText, 20);
 	}
 }
 void restartGame(int x, int y)
 {
+	
 	if (x > 200 && x < 600 && y > 200 && y < 370)
 	{
-		startGameflage = 1, jumpdownflag = 0, jumpupflag = 0, jumpflag = 0, dip = 0, obstacles.clear(), birds.clear(), r = 0, birdCount = 0, dinoX = 200, dinoY = 105, fps = 0, speed = 1.55, a = .006, score = 0;
+		startGameflage = 3,jumpdownflag = 0, jumpupflag = 0, jumpflag = 0, dip = 0, obstacles.clear(), birds.clear(), r = 0, birdCount = 0, dinoX = 200, dinoY = 105, fps = 0, speed = 1.55, a = .006, score = 0,scoreSaved=false;
+		
 	}
+	if(x > 730 && x < 755 && y > 535 && y < 565){
+		startGameflage = 0,jumpdownflag = 0, jumpupflag = 0, jumpflag = 0, dip = 0, obstacles.clear(), birds.clear(), r = 0, birdCount = 0, dinoX = 200, dinoY = 105, fps = 0, speed = 1.55, a = .006, score = 0,scoreSaved=false;
+	}
+
 }
 void displayScore()
 {
@@ -470,16 +569,24 @@ void displayScore()
 }
 void updateStand()
 {
-	standDino();
-	createObstackles();
+	if (startGameflage == 1)
+	{
+
+		standDino();
+		createObstackles();
+	}
+		
 }
 void createCoin()
 {
-	Coin add;
-	add.x = 800;
-	add.y = 120;
-	add.index = 1;
-	coins.push_back(add);
+	if (startGameflage == 1)
+	{
+		Coin add;
+		add.x = 800;
+		add.y = 120;
+		add.index = 1;
+		coins.push_back(add);
+	}
 }
 void updateCoin()
 {
@@ -508,15 +615,153 @@ void lifePlot()
 		iShowBMP2(lifecordinatex - spacingLife * i, lifecordinatey, coin, 0);
 	}
 }
+// Function to load the leaderboard from the file
+void loadLeaderboard()
+{
+	leaderboard.clear();
+	ifstream inFile(leaderboardFile);
+	string name;
+	int score;
+	while (inFile >> name >> score)
+	{
+		leaderboard.push_back({name, score});
+	}
+	inFile.close();
+}
+
+// Function to save the leaderboard to the file
+void saveLeaderboard()
+{
+	ofstream outFile(leaderboardFile);
+	for (const auto &entry : leaderboard)
+	{
+		outFile << entry.first << " " << entry.second << endl;
+	}
+	outFile.close();
+}
+
+// Function to update the leaderboard with a new score
+void updateLeaderboard(const char *name, int score)
+{
+	// Read existing leaderboard data
+	FILE *file = fopen("leaderboard.txt", "r");
+	std::vector<std::pair<int, std::string>> leaderboard;
+
+	if (file != NULL)
+	{
+		char playerName[50];
+		int playerScore;
+		while (fscanf(file, "%s %d", playerName, &playerScore) == 2)
+		{
+			leaderboard.push_back({playerScore, playerName});
+		}
+		fclose(file);
+	}
+
+	// Add the new score
+	leaderboard.push_back({score, name});
+	
+
+	// Sort by score (highest first)
+	std::sort(leaderboard.rbegin(), leaderboard.rend());
+
+	// Write the sorted data back to the file
+	file = fopen("leaderboard.txt", "w"); // Open in write mode to overwrite
+	if (file == NULL)
+	{
+		printf("Error opening leaderboard file!\n");
+		return;
+	}
+
+	for (const auto &entry : leaderboard)
+	{
+		fprintf(file, "%s %d\n", entry.second.c_str(), entry.first);
+	}
+	fclose(file);
+	
+}
+void displayLeaderboard()
+{
+
+	FILE *fil = fopen("leaderboard.txt", "r");
+
+	for (int i = 0; i < 3; i++)
+	{
+		fscanf(fil, "%s %d", Players[i].n, &Players[i].scoreName);
+	}
+	fclose(fil);
+}
 int main()
 {
 	// place your own initialization codes here.
-	
-
+	displayLeaderboard();
 	iSetTimer(100, update);
-	iSetTimer(2000, updateStand);
-	iSetTimer(10000, createBird);
-	iSetTimer(12000, createCoin);
+	iSetTimer(1800, updateStand);
+	iSetTimer(7400, createBird);
+	iSetTimer(21540, createCoin);
 	iInitialize(800, 600, "demo");
 	return 0;
+}
+void enterName()
+{
+	iShowBMP2(0, 0, "./dificulty/nameEnter.bmp", -1);
+	iSetColor(10, 57, 129);
+	iText(320, 165, name, GLUT_BITMAP_HELVETICA_18);
+}
+void displayLead()
+{
+
+	iShowBMP(0, 0, "./dificulty/leaderboard.bmp");
+	for (int i = 0; i < 3; i++)
+	{
+		char scoreN[20];
+		char scoreNum[10];
+		sprintf(scoreNum, "%d", Players[i].scoreName);
+		sprintf(scoreN, "%s", Players[i].n);
+		iText(220, 270 - i * 50, scoreN, GLUT_BITMAP_HELVETICA_18);
+		iSetColor(255, 255, 255);
+		iText(350, 270 - i * 50, scoreNum, GLUT_BITMAP_HELVETICA_18);
+		iSetColor(255, 255, 255);
+	}
+}
+void levelselection(){
+	iShowBMP2(0,0,"./dificulty/diff.bmp",-1);
+	
+	
+}
+void checklevel(int x,int y){
+	if(x>275&&x<530&&y<380&&y>290){
+		easy();
+		startGameflage=1;
+	}
+	if(x>275&&x<530&&y<270&&y>180){
+		medium();
+		startGameflage=1;
+	}
+	if(x>275&&x<530&&y<160&&y>70){
+		hard();
+		startGameflage=1;
+	}
+	PlaySound(TEXT("sound//gamesound.wav"), NULL, SND_LOOP | SND_ASYNC);
+
+}
+void easy(){
+	groundSpeed=15;
+	life=3;
+	height=100;
+	
+}
+void medium(){
+	 groundSpeed = 25;
+	 life=3;
+	 height=110;
+}
+void hard(){
+	groundSpeed=30;
+	life=2;
+	height=120;
+}
+void info(){
+	iShowBMP2(0,0,"./INTRO/Instructions.bmp",-1);
+
 }
